@@ -11,6 +11,7 @@ import TestimonialsSection from "./components/Testimonial";
 import ServiceSection from "./components/ServiceSection";
 import VideoSection from "./components/VideoSection";
 import UpcomingEvents from "./components/UpComingEvent";
+import PopularCauses from "./components/PopularCauses";
 import DonateSection from "./pages/Donation";
 import VolunteersPage from "./pages/VolunteerPage";
 import ScrollToTop from "./ScrollToTop";
@@ -20,6 +21,7 @@ function Home() {
     <>
       <HeroSection />
       <UpcomingEvents />
+      <PopularCauses />
       <ServicesSection />
       <HomeIntro />
       <ServiceSection />
