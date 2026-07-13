@@ -6,14 +6,12 @@ import VideoSection from '../components/VideoSection';
 import TestimonialsSection from '../components/Testimonial';
 import HomeIntro from '../components/HomeIntro';
 import UpcomingEvents from '../components/UpComingEvent';
-import PopularCauses from '../components/PopularCauses';
 
 const Home: React.FC = () => {
   return (
     <div className="min-h-screen">
      <HeroSection />
      <UpcomingEvents />
-     <PopularCauses />
      <ServicesSection/>
      <HomeIntro/>
      <ServiceSection/>

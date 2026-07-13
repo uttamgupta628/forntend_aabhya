@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { apiGet, apiPostFormData, ApiError } from "../lib/api";
 
 /* ── Typewriter Hook — types, holds, erases, repeats ── */
@@ -85,6 +85,7 @@ export default function VolunteersPage() {
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -95,6 +96,17 @@ export default function VolunteersPage() {
       if (prev) URL.revokeObjectURL(prev);
       return file ? URL.createObjectURL(file) : null;
     });
+  }
+
+  function resetImage() {
+    setImageFile(null);
+    setImagePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    // File inputs are uncontrolled in the browser — React state alone
+    // cannot clear the native "chosen file" text, so reset it via ref.
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit() {
@@ -109,11 +121,7 @@ export default function VolunteersPage() {
       const res = await apiPostFormData<{ message: string }>("/api/volunteer-applications", formData);
       setStatus({ type: "success", text: res.message || "Thanks for applying!" });
       setForm({ name: "", email: "", phone: "", dob: "", occupation: "", address: "", county: "", message: "" });
-      setImageFile(null);
-      setImagePreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+      resetImage();
     } catch (err) {
       const text = err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
       setStatus({ type: "error", text });
@@ -490,6 +498,7 @@ export default function VolunteersPage() {
               <div>
                 <label className="block text-xs font-bold text-[#0d2b2b] mb-1.5">Photo</label>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
