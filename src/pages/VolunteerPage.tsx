@@ -86,8 +86,10 @@ export default function VolunteersPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dobInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] || null;
@@ -109,6 +111,12 @@ export default function VolunteersPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function openDatePicker() {
+    // showPicker() is the reliable way to open the native calendar from
+    // anywhere on the field / custom icon, not just the tiny native icon hitbox.
+    dobInputRef.current?.showPicker?.();
+  }
+
   async function handleSubmit() {
     if (submitting) return;
     setStatus(null);
@@ -120,14 +128,21 @@ export default function VolunteersPage() {
 
       const res = await apiPostFormData<{ message: string }>("/api/volunteer-applications", formData);
       setStatus({ type: "success", text: res.message || "Thanks for applying!" });
+      setShowModal(true);
       setForm({ name: "", email: "", phone: "", dob: "", occupation: "", address: "", county: "", message: "" });
       resetImage();
     } catch (err) {
       const text = err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
       setStatus({ type: "error", text });
+      setShowModal(true);
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function closeModalAndReload() {
+    setShowModal(false);
+    window.location.reload();
   }
 
   /* Typewriters */
@@ -304,6 +319,25 @@ export default function VolunteersPage() {
           box-shadow: 0 4px 12px rgba(232,73,15,0.10);
         }
 
+        /* ── Date input: hide native icon, let our showPicker()-driven CalIcon
+               be the only visible trigger, but keep native indicator clickable
+               as a fallback for browsers without showPicker() support ── */
+        .vp-date-input {
+          cursor: pointer;
+        }
+        .vp-date-input::-webkit-calendar-picker-indicator {
+          opacity: 0;
+          position: absolute;
+          right: 0;
+          top: 0;
+          width: 2.25rem;
+          height: 100%;
+          cursor: pointer;
+        }
+        .vp-date-input::-webkit-datetime-edit {
+          cursor: pointer;
+        }
+
         /* ── Submit button pulse (repeats) ── */
         .vp-submit-btn {
           animation: vpBtnPulse 3s ease-in-out infinite;
@@ -343,6 +377,81 @@ export default function VolunteersPage() {
         @keyframes vpShimmer {
           from { left: -75%; }
           to   { left: 125%; }
+        }
+
+        /* ── Status popup modal ── */
+        .vp-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(13,43,43,0.55);
+          backdrop-filter: blur(2px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1rem;
+          z-index: 1000;
+          animation: vpModalOverlayIn 0.2s ease both;
+        }
+        @keyframes vpModalOverlayIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .vp-modal-card {
+          background: #ffffff;
+          border-radius: 1rem;
+          padding: 2rem 1.75rem 1.75rem;
+          max-width: 360px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 20px 50px rgba(13,43,43,0.25);
+          animation: vpModalCardIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @keyframes vpModalCardIn {
+          from { opacity: 0; transform: translateY(12px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .vp-modal-icon {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1rem;
+          font-size: 1.4rem;
+          font-weight: 800;
+        }
+        .vp-modal-icon-success {
+          background: #e6f6ee;
+          color: #1a9d5c;
+        }
+        .vp-modal-icon-error {
+          background: #fdeae4;
+          color: #e8490f;
+        }
+        .vp-modal-text {
+          color: #0d2b2b;
+          font-size: 0.85rem;
+          font-weight: 600;
+          line-height: 1.5;
+          margin-bottom: 1.5rem;
+        }
+        .vp-modal-btn {
+          background: #e8490f;
+          color: #fff;
+          font-weight: 700;
+          font-size: 0.75rem;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          padding: 0.65rem 2.5rem;
+          border-radius: 0.65rem;
+          border: none;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.2s;
+        }
+        .vp-modal-btn:hover {
+          background: #d43d09;
+          transform: translateY(-1px);
         }
       `}</style>
 
@@ -469,9 +578,18 @@ export default function VolunteersPage() {
               <div>
                 <label className="block text-xs font-bold text-[#0d2b2b] mb-1.5">Date Of Birth</label>
                 <div className="relative">
-                  <input type="date" value={form.dob} onChange={set("dob")}
-                         className={inputCls + " pr-9"} />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <input
+                    ref={dobInputRef}
+                    type="date"
+                    value={form.dob}
+                    onChange={set("dob")}
+                    onClick={openDatePicker}
+                    className={inputCls + " pr-9 vp-date-input"}
+                  />
+                  <span
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
+                    onClick={openDatePicker}
+                  >
                     <CalIcon />
                   </span>
                 </div>
@@ -525,17 +643,6 @@ export default function VolunteersPage() {
             </div>
           </div>
 
-          {/* Status message */}
-          {status && (
-            <p
-              className={`text-center text-xs font-semibold mt-5 ${
-                status.type === "success" ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {status.text}
-            </p>
-          )}
-
           {/* Submit */}
           <div className="mt-7 flex justify-center">
             <button
@@ -550,6 +657,28 @@ export default function VolunteersPage() {
           </div>
         </div>
       </section>
+
+      {/* ════════════════════════════════════════
+          Status popup — shown after submit, reloads page on close
+      ════════════════════════════════════════ */}
+      {showModal && status && (
+        <div
+          className="vp-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeModalAndReload}
+        >
+          <div className="vp-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className={`vp-modal-icon ${status.type === "success" ? "vp-modal-icon-success" : "vp-modal-icon-error"}`}>
+              {status.type === "success" ? "✓" : "!"}
+            </div>
+            <p className="vp-modal-text">{status.text}</p>
+            <button className="vp-modal-btn" onClick={closeModalAndReload}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
