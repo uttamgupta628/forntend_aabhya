@@ -38,6 +38,20 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+/* Helper: split volunteers into N sequential rows, as evenly as possible */
+function splitIntoRows<T>(items: T[], rowCount: number): T[][] {
+  const rows: T[][] = Array.from({ length: rowCount }, () => []);
+  const base = Math.floor(items.length / rowCount);
+  const extra = items.length % rowCount;
+  let cursor = 0;
+  for (let r = 0; r < rowCount; r++) {
+    const count = base + (r < extra ? 1 : 0);
+    rows[r] = items.slice(cursor, cursor + count);
+    cursor += count;
+  }
+  return rows;
+}
+
 /* ── Icons ── */
 const InstagramIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -66,6 +80,71 @@ type TeamVolunteer = {
   instagram: string;
 };
 
+/* ── A single volunteer card, sized for the horizontal marquee ── */
+function VolunteerCard({ v }: { v: TeamVolunteer }) {
+  return (
+    <div className="vp-marquee-card w-40 sm:w-48 shrink-0">
+      <div className="vp-card-float">
+        <div className="vp-photo-frame mb-3">
+          {v.image?.url ? (
+            <img
+              src={v.image.url}
+              alt={v.name}
+              className="vp-img w-full h-full object-cover object-top"
+              draggable={false}
+            />
+          ) : (
+            <div className="vp-placeholder">{getInitials(v.name)}</div>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="min-w-0">
+            <p className="vp-name text-[#0d2b2b] font-extrabold text-sm leading-tight truncate">
+              {v.name}
+            </p>
+            <p className="vp-role text-gray-400 text-left text-[11px] mt-0.5 truncate">{v.role}</p>
+          </div>
+          <a
+            href={v.instagram && v.instagram !== "#" ? v.instagram : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${v.name} on Instagram`}
+            aria-disabled={!v.instagram || v.instagram === "#"}
+            onClick={(e) => { if (!v.instagram || v.instagram === "#") e.preventDefault(); }}
+            className={`vp-ig-btn shrink-0 ${v.instagram && v.instagram !== "#" ? "text-gray-900" : "text-gray-300 cursor-default"}`}
+          >
+            <InstagramIcon />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── A single marquee row — scrolls continuously, alternating direction ── */
+function MarqueeRow({ items, direction, speedSeconds }: {
+  items: TeamVolunteer[];
+  direction: "left" | "right";
+  speedSeconds: number;
+}) {
+  if (items.length === 0) return null;
+  // Duplicate the row so the track can loop seamlessly from 0 → -50%.
+  const track = [...items, ...items];
+
+  return (
+    <div className="vp-marquee-row overflow-hidden">
+      <div
+        className={`vp-marquee-track flex gap-6 ${direction === "right" ? "vp-marquee-reverse" : ""}`}
+        style={{ animationDuration: `${speedSeconds}s` }}
+      >
+        {track.map((v, i) => (
+          <VolunteerCard key={`${v._id}-${i}`} v={v} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function VolunteersPage() {
   /* ── Team grid — fetched from backend ── */
   const [volunteers, setVolunteers] = useState<TeamVolunteer[]>([]);
@@ -77,6 +156,9 @@ export default function VolunteersPage() {
       .catch(() => setVolunteers([]))
       .finally(() => setVolunteersLoading(false));
   }, []);
+
+  const rows = splitIntoRows(volunteers, 3);
+  const rowDirections: Array<"left" | "right"> = ["left", "right", "left"];
 
   /* ── Enrollment form ── */
   const [form, setForm] = useState({
@@ -187,40 +269,45 @@ export default function VolunteersPage() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* ── Volunteer card entrance — alternates left / right per column ── */
-        .vp-card-enter {
-          animation: vpCardInRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+        /* ── Marquee rows — continuous horizontal auto-scroll ── */
+        .vp-marquee-row {
+          -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%);
         }
-        .vp-card-enter.vp-from-left {
-          animation-name: vpCardInLeft;
+        .vp-marquee-track {
+          width: max-content;
+          animation-name: vpMarqueeLeft;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+          will-change: transform;
         }
-        @keyframes vpCardInRight {
-          from { opacity: 0; transform: translateX(24px) translateY(14px) scale(0.94); }
-          to   { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+        .vp-marquee-track.vp-marquee-reverse {
+          animation-name: vpMarqueeRight;
         }
-        @keyframes vpCardInLeft {
-          from { opacity: 0; transform: translateX(-24px) translateY(14px) scale(0.94); }
-          to   { opacity: 1; transform: translateX(0) translateY(0) scale(1); }
+        @keyframes vpMarqueeLeft {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        @keyframes vpMarqueeRight {
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0); }
+        }
+        .vp-marquee-row:hover .vp-marquee-track {
+          animation-play-state: paused;
+        }
+        .vp-marquee-card {
+          padding: 4px;
         }
 
         /* ── Card continuous float ── */
         .vp-card-float {
-          animation: vpFloat 4s ease-in-out infinite;
           transition: transform 0.3s ease, box-shadow 0.3s ease;
           border-radius: 1rem;
-        }
-        /* stagger via nth-child cycles */
-        .vp-card-enter:nth-child(5n+2) .vp-card-float { animation-delay: -0.8s; }
-        .vp-card-enter:nth-child(5n+3) .vp-card-float { animation-delay: -1.6s; }
-        .vp-card-enter:nth-child(5n+4) .vp-card-float { animation-delay: -2.4s; }
-        .vp-card-enter:nth-child(5n+5) .vp-card-float { animation-delay: -3.2s; }
-        @keyframes vpFloat {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-6px); }
+          position: relative;
+          overflow: hidden;
         }
         .vp-card-float:hover {
-          animation-play-state: paused;
-          transform: translateY(-9px) scale(1.03);
+          transform: translateY(-6px) scale(1.03);
           box-shadow: 0 18px 36px rgba(13,43,43,0.13);
         }
 
@@ -292,12 +379,6 @@ export default function VolunteersPage() {
         /* ── Role badge slide-in ── */
         .vp-role {
           display: inline-block;
-          animation: vpRoleIn 0.5s ease both;
-          animation-delay: 0.15s;
-        }
-        @keyframes vpRoleIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
         }
 
         /* ── Form section fade-in ── */
@@ -355,10 +436,6 @@ export default function VolunteersPage() {
         }
 
         /* ── Shimmer sweep on card hover ── */
-        .vp-card-float {
-          position: relative;
-          overflow: hidden;
-        }
         .vp-card-float::before {
           content: '';
           position: absolute;
@@ -377,6 +454,15 @@ export default function VolunteersPage() {
         @keyframes vpShimmer {
           from { left: -75%; }
           to   { left: 125%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .vp-marquee-track {
+            animation: none !important;
+          }
+          .vp-marquee-row {
+            overflow-x: auto;
+          }
         }
 
         /* ── Status popup modal ── */
@@ -477,53 +563,19 @@ export default function VolunteersPage() {
           </h2>
         </div>
 
-        {/* Volunteer grid — fetched from GET /api/volunteers */}
+        {/* Volunteer rows — fetched from GET /api/volunteers, shown as 3
+            horizontally auto-scrolling rows, alternating direction */}
         {!volunteersLoading && volunteers.length === 0 ? (
           <p className="text-center text-sm text-gray-400 mb-14">No team members to show yet.</p>
         ) : (
-          <div className="max-w-[1920px] mx-auto grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-10">
-            {volunteers.map((v, i) => (
-              <div
-                key={v._id}
-                className={`vp-card-enter flex flex-col ${i % 2 === 0 ? "vp-from-left" : ""}`}
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                <div className="vp-card-float">
-                  {/* Photo — fixed, standardized frame for every card */}
-                  <div className="vp-photo-frame mb-3">
-                    {v.image?.url ? (
-                      <img
-                        src={v.image.url}
-                        alt={v.name}
-                        className="vp-img w-full h-full object-cover object-top"
-                      />
-                    ) : (
-                      <div className="vp-placeholder">{getInitials(v.name)}</div>
-                    )}
-                  </div>
-
-                  {/* Name + social */}
-                  <div className="flex items-center justify-between gap-2 px-1">
-                    <div>
-                      <p className="vp-name text-[#0d2b2b] font-extrabold text-sm leading-tight">
-                        {v.name}
-                      </p>
-                      <p className="vp-role text-gray-400 text-left text-[11px] mt-0.5">{v.role}</p>
-                    </div>
-                    <a
-                      href={v.instagram && v.instagram !== "#" ? v.instagram : undefined}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${v.name} on Instagram`}
-                      aria-disabled={!v.instagram || v.instagram === "#"}
-                      onClick={(e) => { if (!v.instagram || v.instagram === "#") e.preventDefault(); }}
-                      className={`vp-ig-btn shrink-0 ${v.instagram && v.instagram !== "#" ? "text-gray-900" : "text-gray-300 cursor-default"}`}
-                    >
-                      <InstagramIcon />
-                    </a>
-                  </div>
-                </div>
-              </div>
+          <div className="max-w-[1920px] mx-auto flex flex-col gap-8 mb-14">
+            {rows.map((rowItems, i) => (
+              <MarqueeRow
+                key={i}
+                items={rowItems}
+                direction={rowDirections[i]}
+                speedSeconds={Math.max(18, rowItems.length * 6)}
+              />
             ))}
           </div>
         )}

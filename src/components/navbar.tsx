@@ -37,6 +37,17 @@ const CloseIcon = () => (
   </svg>
 );
 
+// ── Govt. registration verified badge icon (shield + check) ──
+const ShieldCheckIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0">
+    <path
+      d="M12 2.5l7.5 3v5.2c0 4.9-3.2 9.28-7.5 10.8-4.3-1.52-7.5-5.9-7.5-10.8V5.5l7.5-3z"
+      fill="#E8522A" fillOpacity="0.14" stroke="#E8522A" strokeWidth="1.3" strokeLinejoin="round"
+    />
+    <path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="#E8522A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const NAV_LINKS = [
   { label: "Home",    to: "/" },
   { label: "About",   to: "/about" },
@@ -79,13 +90,22 @@ export default function Navbar() {
       </div>
 
       {/* Main Navbar */}
-      <div className="bg-white shadow-sm px-4 py-2 flex items-center justify-between relative">
+      <div className="bg-white shadow-md px-4 py-2 flex items-center justify-between relative z-20">
 
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+        <Link to="/" className="flex flex-col items-center gap-1 shrink-0">
           <img
             src={"https://res.cloudinary.com/dquki4xol/image/upload/v1782213583/ChatGPT_Image_Jun_23__2026__04_47_33_PM-removebg-preview_n55snw.png"}
             className="h-20 w-auto object-contain"
           />
+          <span
+            className="inline-flex items-center gap-1 bg-[#fdece6] border border-[#E8522A]/25
+                       rounded-full pl-1.5 pr-2.5 py-0.5 -mt-1"
+          >
+            <ShieldCheckIcon />
+            <span className="text-[9px] font-bold tracking-wide text-[#E8522A] whitespace-nowrap">
+              Govt. Reg. No.: IV-230500039/2026
+            </span>
+          </span>
         </Link>
 
         {/* Desktop Nav */}
@@ -96,10 +116,18 @@ export default function Navbar() {
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `font-medium text-base transition-colors ${isActive ? activeCls : defaultCls}`
+                `relative font-medium text-base transition-colors group ${isActive ? activeCls : defaultCls}`
               }
             >
-              {label}
+              {({ isActive }) => (
+                <>
+                  {label}
+                  <span
+                    className={`absolute left-0 -bottom-1 h-[2px] bg-[#E8522A] transition-all duration-300
+                               ${isActive ? "w-full" : "w-0 group-hover:w-full"}`}
+                  />
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -110,7 +138,8 @@ export default function Navbar() {
             className="inline-flex items-center justify-center bg-white hover:bg-[#1a3328]
                        border-2 border-[#1a3328] text-[#1a3328] hover:text-white
                        font-bold text-xs px-5 h-10 rounded-md
-                       tracking-wide transition-colors uppercase whitespace-nowrap"
+                       tracking-wide transition-all duration-200 uppercase whitespace-nowrap
+                       hover:shadow-md hover:-translate-y-0.5"
           >
             Volunteers
           </Link>
@@ -119,13 +148,19 @@ export default function Navbar() {
             to="/Donation"
             className="inline-flex items-center justify-center bg-[#E8522A] hover:bg-[#cf4521]
                        text-white font-bold text-xs px-5 h-10 rounded-md
-                       tracking-wide transition-colors uppercase whitespace-nowrap"
+                       tracking-wide transition-all duration-200 uppercase whitespace-nowrap
+                       shadow-sm shadow-[#E8522A]/30 hover:shadow-lg hover:shadow-[#E8522A]/40
+                       hover:-translate-y-0.5"
           >
             Donate Now
           </Link>
         </div>
 
-        <button className="md:hidden text-gray-700" onClick={() => setMobileOpen(o => !o)}>
+        <button
+          className="md:hidden text-gray-700 hover:text-[#E8522A] transition-colors"
+          onClick={() => setMobileOpen(o => !o)}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+        >
           {mobileOpen ? <CloseIcon /> : <MenuIcon />}
         </button>
       </div>
@@ -133,7 +168,13 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 px-6 py-4
-                        flex flex-col gap-4 shadow-md">
+                        flex flex-col gap-4 shadow-md animate-[navMobileIn_0.25s_ease]">
+          <style>{`
+            @keyframes navMobileIn {
+              from { opacity: 0; transform: translateY(-8px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
           {NAV_LINKS.map(({ label, to }) => (
             <NavLink
               key={label}
@@ -163,7 +204,8 @@ export default function Navbar() {
             onClick={() => setMobileOpen(false)}
             className="inline-flex justify-center items-center bg-[#E8522A] hover:bg-[#cf4521]
                        text-white font-bold text-sm h-10 rounded-md
-                       tracking-wide transition-colors uppercase"
+                       tracking-wide transition-colors uppercase
+                       shadow-sm shadow-[#E8522A]/30"
           >
             Donate Now
           </Link>

@@ -43,6 +43,17 @@ const ArrowRight = () => (
   </svg>
 );
 
+// ── Govt. registration verified badge icon (shield + check) ──
+const ShieldCheckIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0">
+    <path
+      d="M12 2.5l7.5 3v5.2c0 4.9-3.2 9.28-7.5 10.8-4.3-1.52-7.5-5.9-7.5-10.8V5.5l7.5-3z"
+      fill="#E8522A" fillOpacity="0.18" stroke="#E8A030" strokeWidth="1.3" strokeLinejoin="round"
+    />
+    <path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="#E8A030" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const PAGES_LINKS = [
   { label: "Home",       to: "/" },
   { label: "About",      to: "/about" },
@@ -97,8 +108,20 @@ export default function Footer() {
           {/* COL 1 — Logo + tagline + socials */}
           <div className="flex flex-col">
             <Link to="/">
-              <img src={"https://res.cloudinary.com/dquki4xol/image/upload/v1782214369/aabhya_logo_n9ugcz.png"} className="h-auto  w-auto object-cover mb-5" />
+              <img src={"https://res.cloudinary.com/dquki4xol/image/upload/v1782214369/aabhya_logo_n9ugcz.png"} className="h-auto  w-auto object-cover mb-2" />
             </Link>
+
+            {/* Govt. registration badge */}
+            <div
+              className="inline-flex items-center gap-1.5 self-start bg-[#1a3728]
+                         border border-[#E8A030]/30 rounded-full pl-2 pr-3 py-1 mb-5"
+            >
+              <ShieldCheckIcon />
+              <span className="text-[10px] font-bold tracking-wide text-[#E8A030] whitespace-nowrap">
+                Govt. Reg. No.: IV-230500039/2026
+              </span>
+            </div>
+
             <p className="text-gray-300 text-xs leading-relaxed mb-5 uppercase ">
               Together, we can make a difference today. Join our community and help
               create lasting change for those in need.

@@ -1,4 +1,3 @@
-// pages/GalleryPage.tsx
 import { useState, useRef, useEffect } from "react";
 import { apiGet } from "../lib/api";
 
@@ -11,6 +10,7 @@ interface GalleryVideo {
   category: Category;
   src: string;
   isNew?: boolean;
+  createdAt?: string;
 }
 
 interface GalleryPhoto {
@@ -19,6 +19,7 @@ interface GalleryPhoto {
   category: PhotoCategory;
   src: string;
   isNew?: boolean;
+  createdAt?: string;
 }
 
 // Shape returned by GET /api/gallery/videos
@@ -29,6 +30,7 @@ interface GalleryVideoApiModel {
   video: { url: string; publicId: string };
   isNew: boolean;
   isActive: boolean;
+  createdAt?: string;
 }
 
 // Shape returned by GET /api/gallery/photos
@@ -39,6 +41,7 @@ interface GalleryPhotoApiModel {
   photo: { url: string; publicId: string };
   isNew: boolean;
   isActive: boolean;
+  createdAt?: string;
 }
 
 interface GalleryVideoApiResponse {
@@ -55,6 +58,19 @@ interface GalleryPhotoApiResponse {
 
 const CATEGORIES: Category[] = ["All", "Food Distribution", "Events"];
 const PHOTO_CATEGORIES: PhotoCategory[] = ["All", "Orphans", "Food Distribution", "Events"];
+
+/* Sort newest-uploaded-first. Prefers createdAt (actual upload time) when
+   present; falls back to Mongo ObjectId ordering (which is itself
+   chronological) so this still works even if createdAt isn't returned. */
+function sortNewestFirst<T extends { id: string; createdAt?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    // Mongo ObjectIds sort chronologically as strings, so this is a safe fallback.
+    return b.id.localeCompare(a.id);
+  });
+}
 
 /* ── Typewriter Hook — repeats every `pauseMs` ms ── */
 function useTypewriter(text: string, speed = 70, pauseMs = 3500) {
@@ -404,15 +420,16 @@ export default function GalleryPage() {
         setVideosLoading(true);
         const res = await apiGet<GalleryVideoApiResponse>("/api/gallery/videos");
         if (cancelled) return;
-        setVideos(
-          res.data.map((v) => ({
-            id: v._id,
-            title: v.title,
-            category: v.category,
-            src: v.video?.url || "",
-            isNew: v.isNew,
-          }))
-        );
+        const mapped = res.data.map((v) => ({
+          id: v._id,
+          title: v.title,
+          category: v.category,
+          src: v.video?.url || "",
+          isNew: v.isNew,
+          createdAt: v.createdAt,
+        }));
+        // Guarantee newest-uploaded-first regardless of what order the API returns.
+        setVideos(sortNewestFirst(mapped));
         setVideosError(null);
       } catch (err: any) {
         if (!cancelled) setVideosError(err?.message || "Failed to load videos");
@@ -432,15 +449,16 @@ export default function GalleryPage() {
         setPhotosLoading(true);
         const res = await apiGet<GalleryPhotoApiResponse>("/api/gallery/photos");
         if (cancelled) return;
-        setPhotos(
-          res.data.map((p) => ({
-            id: p._id,
-            title: p.title,
-            category: p.category,
-            src: p.photo?.url || "",
-            isNew: p.isNew,
-          }))
-        );
+        const mapped = res.data.map((p) => ({
+          id: p._id,
+          title: p.title,
+          category: p.category,
+          src: p.photo?.url || "",
+          isNew: p.isNew,
+          createdAt: p.createdAt,
+        }));
+        // Guarantee newest-uploaded-first regardless of what order the API returns.
+        setPhotos(sortNewestFirst(mapped));
         setPhotosError(null);
       } catch (err: any) {
         if (!cancelled) setPhotosError(err?.message || "Failed to load photos");
@@ -453,8 +471,6 @@ export default function GalleryPage() {
     };
   }, []);
 
-  // Backend already returns newest-first (sort({ createdAt: -1 })), so no
-  // client-side id sort is needed anymore — just filter by category.
   const filtered =
     activeCategory === "All" ? videos : videos.filter((v) => v.category === activeCategory);
 

@@ -4,7 +4,7 @@ import { apiGet, apiPost, apiPut, ApiError } from "../lib/api";
 
 type CauseType = "" | "general" | "food" | "clothes" | "education" | "medical";
 type YesNo = "" | "yes" | "no";
-type PaymentMethod = "card" | "upi";
+type PaymentMethod = "upi";
 
 const CAUSE_OPTIONS: { value: CauseType; label: string }[] = [
   { value: "",          label: "Select One Option" },
@@ -43,8 +43,8 @@ export default function DonationForm() {
   const [submitting,  setSubmitting]  = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // ── UPI payment ──
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  // ── UPI payment (only payment method) ──
+  const [paymentMethod] = useState<PaymentMethod>("upi");
   const [upiId, setUpiId] = useState<string | null>(null);
   const [upiPayeeName, setUpiPayeeName] = useState("Aabhya Foundation");
   const [upiModalOpen, setUpiModalOpen] = useState(false);
@@ -78,24 +78,16 @@ export default function DonationForm() {
     setStatus(null);
     setSubmitting(true);
     try {
-      const res = await apiPost<{ message: string; paymentLink: string | null; data?: { _id?: string } }>(
+      const res = await apiPost<{ message: string; data?: { _id?: string } }>(
         "/api/donations",
         { cause, amount, name, email, phone, aadhar, taxBenefit, citizen, paymentMethod }
       );
 
-      if (paymentMethod === "upi") {
-        setDonationId(res.data?._id || null);
-        setUtrValue("");
-        setUtrSubmitted(false);
-        setUtrError(null);
-        setUpiModalOpen(true);
-      } else if (res.paymentLink) {
-        // Send the donor straight to Stripe Checkout
-        window.location.href = res.paymentLink;
-        return;
-      } else {
-        setStatus({ type: "success", text: res.message || "Donation request received!" });
-      }
+      setDonationId(res.data?._id || null);
+      setUtrValue("");
+      setUtrSubmitted(false);
+      setUtrError(null);
+      setUpiModalOpen(true);
     } catch (err) {
       const text = err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
       setStatus({ type: "error", text });
@@ -179,43 +171,11 @@ export default function DonationForm() {
           </div>
         </div>
 
-        {/* ── Payment Method ── */}
-        <div className="mb-6">
-          <label className={label}>Payment Method *</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setPaymentMethod("card")}
-              className={`flex items-center justify-center gap-2 py-3 rounded-md border-2 text-sm font-semibold transition-colors
-                ${paymentMethod === "card"
-                  ? "border-[#e8490f] bg-[#fde8e8] text-[#0d2b2b]"
-                  : "border-gray-200 text-gray-500 hover:border-gray-300"}`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-              </svg>
-              Card / Online
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMethod("upi")}
-              disabled={!upiId}
-              title={!upiId ? "UPI isn't configured yet" : undefined}
-              className={`flex items-center justify-center gap-2 py-3 rounded-md border-2 text-sm font-semibold transition-colors
-                ${paymentMethod === "upi"
-                  ? "border-[#e8490f] bg-[#fde8e8] text-[#0d2b2b]"
-                  : "border-gray-200 text-gray-500 hover:border-gray-300"}
-                ${!upiId ? "opacity-40 cursor-not-allowed hover:border-gray-200" : ""}`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/>
-                <rect x="4" y="14" width="6" height="6"/><line x1="14" y1="14" x2="20" y2="14"/>
-                <line x1="14" y1="20" x2="20" y2="20"/><line x1="17" y1="14" x2="17" y2="20"/>
-              </svg>
-              UPI (QR Code)
-            </button>
-          </div>
-        </div>
+        {!upiId && (
+          <p className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3.5 py-2.5 mb-6">
+            UPI payments aren't configured yet. Please check back shortly or contact us directly to donate.
+          </p>
+        )}
 
         <div className="grid md:grid-cols-2 gap-x-8 gap-y-5">
 
@@ -342,14 +302,14 @@ export default function DonationForm() {
 
           <button
             onClick={handleSubmit}
-            disabled={!agreed || submitting}
+            disabled={!agreed || submitting || !upiId}
             className={`shrink-0 px-8 py-3 rounded-md font-bold tracking-wide uppercase text-sm
                         text-white transition-colors duration-200 whitespace-nowrap
-                        ${agreed && !submitting
+                        ${agreed && !submitting && upiId
                           ? "bg-[#e8490f] hover:bg-[#d43d09] cursor-pointer"
                           : "bg-[#e8490f]/50 cursor-not-allowed"}`}
           >
-            {submitting ? "Processing..." : paymentMethod === "upi" ? "Show UPI QR Code" : "Donate Now"}
+            {submitting ? "Processing..." : "Show UPI QR Code"}
           </button>
         </div>
 
